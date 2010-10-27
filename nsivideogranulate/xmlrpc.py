@@ -4,6 +4,7 @@
 from base64 import encodestring, decodestring, b64encode
 from StringIO import StringIO
 from xmlrpclib import Server
+from time import sleep
 import cyclone.web
 from twisted.internet import defer
 from zope.interface import implements
@@ -27,10 +28,16 @@ class XmlrpcHandler(cyclone.web.XmlrpcRequestHandler):
         auth = self.request.headers.get("Authorization")
         if auth:
             converted_video_uid = yield self._convert_video(video)
-            converted_video = yield self._get_video(converted_video_uid)
-            images = yield self._granulate("teste.ogv", converted_video)
-            uid = yield self._store_in_sam(images)
-            defer.returnValue(uid)
+#            Método de conversão funcionando com os novos padrões
+#            Pré-salvar grãos no SAM (com alguma tag dizendo que não estão prontos) e colocar o UID deles e do vídeo a ser granularizado na fila
+#            Criar script para gerar os grãos e salvá-los
+#            Criar um template para este script
+
+#            converted_video = yield self._get_video(converted_video_uid)
+#            images = yield self._granulate("teste.ogv", converted_video)
+#            uid = yield self._store_in_sam(images)
+#            defer.returnValue(uid)
+            defer.returnValue(converted_video_uid)
 
     def _granulate(self, filename, data):
         auth = self.request.headers.get("Authorization")
@@ -44,6 +51,8 @@ class XmlrpcHandler(cyclone.web.XmlrpcRequestHandler):
         if auth:
             converter = Server('http://video:convert@localhost:8080/xmlrpc')
             uid = converter.convert(video)
+            while not converter.done(uid):
+                sleep(10)
             return uid
 
     def _get_video(self, uid):

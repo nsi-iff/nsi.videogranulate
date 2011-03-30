@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# encoding: utf-8
+from base64 import decodestring, b64encode
+from nsi.granulate import Granulate
+from restfulie import Restfulie
+from celery.task import task
+
+class VideoException(Exception):
+    pass
+
+@task
+def granulate_video(grains_uid, video_uid, delay):
+    grains = get_from_sam(grains_uid).resource()
+    video = get_from_sam(video_uid).resource()
+    if hasattr(grains.data, 'granulated') and not grains.data.granulated:
+        if hasattr(video.data, 'converted') and not video.data.converted:
+            convert = Restfulie.at('http://localhost:8080/').auth('test','test').as_('application/json')
+            key = convert.post({'video':video.data}).resource().key
+            while True:
+                video = convert.get({'key':key}).resource()
+                if video.done:
+                    break;
+                sleep(delay)
+        uid = video.key
+        granulate(uid, grains.key)
+    else:
+        raise VideoException("Video already granulated.")
+
+def granulate_video(video_uid, grains_uid):
+    video = get_from_sam(video_uid).resource().data.video
+    granulate = Granulate()
+    grains = granulate.granulate('nothing.ogv', decodestring(video))
+    encoded_grains = [b64encode(image.getContent().seek(0).read()) for image in grains['image_list']]
+    store_in_sam(grains_uid, {'grains':encoded_)rains})
+
+def store_in_sam(uid, video):
+    sam = Restfulie.at("http://0.0.0.0:8888/").as_("application/json").auth('test', 'test')
+    return sam.post({'key':uid, 'value':video})
+
+def get_from_sam(uid):
+    sam = Restfulie.at("http://0.0.0.0:8888/").as_("application/json").auth('test', 'test')
+    return sam.get(uid)

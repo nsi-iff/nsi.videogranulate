@@ -1,8 +1,8 @@
 import unittest
 from nsivideogranulate.interfaces.auth import IAuth
-from nsivideogranulate.interfaces.xmlrpc import IXmlrpc
+from nsivideogranulate.interfaces.http import IHttp
 from nsivideogranulate.auth import Authentication
-from nsivideogranulate.xmlrpc import XmlrpcHandler
+from nsivideogranulate.http import HttppcHandler
 
 class TestInterface(unittest.TestCase):
 
@@ -14,8 +14,9 @@ class TestInterface(unittest.TestCase):
 
     def test_handler(self):
         self.assertEquals(IXmlrpc.implementedBy(XmlrpcHandler), True)
-        self.assertEquals(sorted(IXmlrpc.names()), ['get_current_user',
-                                                'xmlrpc_granulate',])
+        self.assertEquals(sorted(IXmlrpc.names()), ['get',
+                                                'get_current_user',
+                                                'post'])
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.0'
+version = '0.1'
 
 setup(name='nsi.videogranulate',
       version=version,
@@ -15,7 +15,7 @@ setup(name='nsi.videogranulate',
       url='',
       license='GPL',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
-      dependency_links=['http://krill.iff.edu.br/pypi/simple/'],
+      dependency_links=['http://newton.iff.edu.br/pypi/'],
       include_package_data=True,
       zip_safe=True,
       install_requires=[

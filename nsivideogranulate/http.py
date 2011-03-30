@@ -79,7 +79,7 @@ class HttpHandler(cyclone.web.RequestHandler):
         return uid
 
     def _enqueue_uid_to_granulate(self, grains_uid, video_uid):
-        send_task('nsivideogranulate.tasks.granulate_video', args=(grains_uid,video_uid,))
+        send_task('nsivideogranulate.tasks.granulate_video', args=(grains_uid,video_uid,5))
 
 #    def _granulate(self, filename, data):
 #        auth = self.request.headers.get("Authorization")

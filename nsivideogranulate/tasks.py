@@ -9,7 +9,7 @@ class VideoException(Exception):
     pass
 
 @task
-def granulate_video(grains_uid, video_uid, delay):
+def granulate_video(grains_uid, video_uid, callback_url):
     print "Starting new job."
     grains = get_from_sam(grains_uid)
     grains = grains.resource()
@@ -26,7 +26,10 @@ def granulate_video(grains_uid, video_uid, delay):
         #del video
         print "Starting the granularization..."
         granulate(video_uid, grains_uid)
-        print "Done."
+        print "Done the granularization."
+        response = Restfulie.at(callback_url).as_('application/json').post({'key':grains_uid, 'status':'Done'})
+        print "Callback executed." 
+        print "Response code: %s" % response.code 
     else:
         raise VideoException("Video already granulated.")
 

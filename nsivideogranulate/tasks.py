@@ -10,22 +10,23 @@ class VideoException(Exception):
 
 @task
 def granulate_video(grains_uid, video_uid, delay):
+    print "Starting new job."
     grains = get_from_sam(grains_uid)
     grains = grains.resource()
     video = get_from_sam(video_uid).resource()
     if hasattr(grains.data, 'done') and not grains.data.done:
-        if hasattr(video.data, 'converted') and not video.data.converted:
-            convert = Restfulie.at('http://localhost:8080/').auth('test','test').as_('application/json')
-            key = convert.post({'video':video.data}).resource().key
-            while True:
-                video = convert.get({'key':key}).resource()
-                if video.done:
-                    break;
-                sleep(delay)
-        del video
-        print("Starting the granularization...")
+        #if hasattr(video.data, 'converted') and not video.data.converted:
+            #convert = Restfulie.at('http://localhost:8080/').auth('test','test').as_('application/json')
+            #key = convert.post({'video':video.data}).resource().key
+            #while True:
+                #video = convert.get({'key':key}).resource()
+                #if video.done:
+                    #break;
+                #sleep(delay)
+        #del video
+        print "Starting the granularization..."
         granulate(video_uid, grains_uid)
-        print("Done.")
+        print "Done."
     else:
         raise VideoException("Video already granulated.")
 

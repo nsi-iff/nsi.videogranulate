@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-from urllib import urlencode
-from urllib2 import urlopen, Request
-from simplejson import dumps, loads
-from base64 import encodestring, decodestring, b64encode
-from StringIO import StringIO
-from xmlrpclib import Server
-from time import sleep
+from json import loads
+from base64 import decodestring
 import cyclone.web
 from twisted.internet import defer
 from zope.interface import implements

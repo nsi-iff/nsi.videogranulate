@@ -15,21 +15,15 @@ def granulate_video(grains_uid, video_uid, callback_url):
     grains = grains.resource()
     video = get_from_sam(video_uid).resource()
     if hasattr(grains.data, 'done') and not grains.data.done:
-        #if hasattr(video.data, 'converted') and not video.data.converted:
-            #convert = Restfulie.at('http://localhost:8080/').auth('test','test').as_('application/json')
-            #key = convert.post({'video':video.data}).resource().key
-            #while True:
-                #video = convert.get({'key':key}).resource()
-                #if video.done:
-                    #break;
-                #sleep(delay)
-        #del video
         print "Starting the granularization..."
         granulate(video_uid, grains_uid)
         print "Done the granularization."
-        response = Restfulie.at(callback_url).as_('application/json').post({'key':grains_uid, 'status':'Done'})
-        print "Callback executed." 
-        print "Response code: %s" % response.code 
+        if not callback_url == None:
+            response = Restfulie.at(callback_url).as_('application/json').post({'key':grains_uid, 'status':'Done'})
+            print "Callback executed." 
+            print "Response code: %s" % response.code 
+        else:
+            print "No callback."
     else:
         raise VideoException("Video already granulated.")
 

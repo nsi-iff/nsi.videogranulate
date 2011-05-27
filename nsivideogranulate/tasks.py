@@ -19,9 +19,10 @@ def granulate_video(grains_uid, video_uid, callback_url):
         granulate(video_uid, grains_uid)
         print "Done the granularization."
         if not callback_url == None:
-            response = Restfulie.at(callback_url).as_('application/json').post({'key':grains_uid, 'status':'Done'})
-            print "Callback executed." 
-            print "Response code: %s" % response.code 
+            print callback_url
+            response = Restfulie.at(callback_url).as_('application/json').post(key=grains_uid, status='Done')
+            print "Callback executed."
+            print "Response code: %s" % response.code
         else:
             print "No callback."
     else:
@@ -36,8 +37,8 @@ def granulate(video_uid, grains_uid):
 
 def store_in_sam(uid, video):
     sam = Restfulie.at("http://0.0.0.0:8888/").as_("application/json").auth('test', 'test')
-    return sam.post({'key':uid, 'value':video})
+    return sam.post(key=uid, value=video)
 
 def get_from_sam(uid):
     sam = Restfulie.at("http://0.0.0.0:8888/").as_("application/json").auth('test', 'test')
-    return sam.get({'key':uid})
+    return sam.get(key=uid)

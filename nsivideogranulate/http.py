@@ -30,14 +30,29 @@ class HttpHandler(cyclone.web.RequestHandler):
     def _load_request_as_json(self):
         return loads(self.request.body)
 
+    def _load_sam_config(self):
+        self.sam_url = self.settings.sam_url
+        self.sam_user = self.settings.sam_user
+        self.sam_pass = self.settings.sam_pass
+
+    def _load_videoconvert_config(self):
+        self.videoconvert_url = self.settings.videoconvert_url
+        self.videoconvert_user = self.settings.videoconvert_user
+        self.videoconvert_pass = self.settings.videoconvert_pass
+
+    def __init__(self, *args, **kwargs):
+        cyclone.web.RequestHandler.__init__(self, *args, **kwargs)
+        self._load_sam_config()
+        self._load_videoconvert_config()
+        self.sam = Restfulie.at(self.sam_url).auth(self.sam_user, self.sam_pass).as_('application/json')
+
     @defer.inlineCallbacks
     @cyclone.web.asynchronous
     def get(self):
         self._check_auth()
         self.set_header('Content-Type', 'application/json')
         uid = self._load_request_as_json().get('key')
-        sam = Restfulie.at('http://localhost:8888/').auth('test', 'test').as_('application/json')
-        response = yield sam.get(key=uid)
+        response = yield self.sam.get(key=uid)
         if response.code == 404:
             raise cyclone.web.HTTPError(404, "Key not found.")
         grains = response.resource()
@@ -63,16 +78,16 @@ class HttpHandler(cyclone.web.RequestHandler):
         self.finish(cyclone.web.escape.json_encode({'grains_key':grains_uid, 'video_key':video_uid}))
 
     def _convert_video(self, video):
-        converter = Restfulie.at('http://localhost:8080/').auth('test', 'test').as_('application/json')
+        converter = Restfulie.at(self.videoconvert_url).auth(self.videoconvert_user, self.videoconvert_pass).as_('application/json')
         response = converter.post(video=video).resource()
         uid = response.key
         return uid
 
     def _pre_store_in_sam(self, data):
-        sam = Restfulie.at('http://localhost:8888/').auth('test', 'test').as_('application/json')
-        response = sam.put(value=data).resource()
+        response = self.sam.put(value=data).resource()
         uid = response.key
         return uid
 
     def _enqueue_uid_to_granulate(self, grains_uid, video_uid, callback_url):
         send_task('nsivideogranulate.tasks.granulate_video', args=(grains_uid,video_uid,callback_url))
+

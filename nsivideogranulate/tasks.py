@@ -12,39 +12,38 @@ class VideoException(Exception):
 
 class VideoGranulation(Task):
 
-    def run(self, grains_uid, video_uid, callback_url, sam_settings):
+    def run(self, grains_uid, video_uid, filename, callback_url, sam_settings):
+        self.filename = filename
         self.grains_uid = grains_uid
         self.video_uid = video_uid
         self.callback_url = callback_url
 
         self.sam = Restfulie.at(sam_settings['url']).as_('application/json').auth(*sam_settings['auth'])
-
         self._granulate_video()
 
     def _granulate_video(self):
         print "Starting new job."
         grains = self._get_from_sam(self.grains_uid).resource()
-        video = self._get_from_sam(self.video_uid).resource()
-        print "Tamanho do vídeo %d" % len(video.data)
+        self._video = self._get_from_sam(self.video_uid).resource()
+        print "Tamanho do vídeo %d" % len(self._video.data)
         if hasattr(grains.data, 'done') and not grains.data.done:
             print "Starting the granularization..."
             self._process_video()
             print "Done the granularization."
             if not self.callback_url == None:
                 print "Callback task sent."
-                send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.grains_uid))
+                send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.grains_uid),
+                           queue='granulate', routing_key='granulate')
             else:
                 print "No callback."
         else:
             raise VideoException("Video already granulated.")
 
     def _process_video(self):
-        video = self._get_from_sam(self.video_uid).resource().data
         granulate = Granulate()
-        grains = granulate.granulate('nothing.ogv', decodestring(video))
+        grains = granulate.granulate(str(self.filename), decodestring(self._video.data))
         encoded_grains = [b64encode(image.getContent().getvalue()) for image in grains['image_list']]
         self._store_in_sam(self.grains_uid, {'grains':encoded_grains})
-        del granulate
 
     def _store_in_sam(self, uid, data):
         return self.sam.post(key=uid, value=data)

@@ -25,7 +25,7 @@ class VideoGranulation(Task):
         print "Starting new job."
         grains = self._get_from_sam(self.grains_uid).resource()
         self._video = self._get_from_sam(self.video_uid).resource()
-        print "Tamanho do vídeo %d" % len(self._video.data)
+        print "Video size: %d" % len(self._video.data)
         if hasattr(grains.data, 'done') and not grains.data.done:
             print "Starting the granularization..."
             self._process_video()

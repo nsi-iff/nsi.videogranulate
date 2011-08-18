@@ -3,6 +3,7 @@
 
 from json import loads
 from base64 import decodestring
+import functools
 import cyclone.web
 from twisted.internet import defer
 from zope.interface import implements
@@ -10,6 +11,21 @@ from nsivideogranulate.interfaces.http import IHttp
 from nsi.granulate import Granulate
 from restfulie import Restfulie
 from celery.execute import send_task
+
+
+def auth(method):
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        auth_type, auth_data = self.request.headers.get("Authorization").split()
+        if not auth_type == "Basic":
+            raise cyclone.web.HTTPAuthenticationRequired("Basic", realm="Restricted Access")
+        user, password = decodestring(auth_data).split(":")
+        # authentication itself
+        if not self.settings.auth.authenticate(user, password):
+            raise cyclone.web.HTTPError(401, "Unauthorized")
+        return method(self, *args, **kwargs)
+    return wrapper
+
 
 class HttpHandler(cyclone.web.RequestHandler):
 
@@ -42,26 +58,24 @@ class HttpHandler(cyclone.web.RequestHandler):
         self._load_videoconvert_config()
         self.sam = Restfulie.at(self.sam_settings['url']).auth(*self.sam_settings['auth']).as_('application/json')
 
+    @auth
     @defer.inlineCallbacks
     @cyclone.web.asynchronous
     def get(self):
-        self._check_auth()
-        self.set_header('Content-Type', 'application/json')
         uid = self._load_request_as_json().get('key')
         response = yield self.sam.get(key=uid)
         if response.code == 404:
             raise cyclone.web.HTTPError(404, "Key not found.")
         grains = response.resource()
+        self.set_header('Content-Type', 'application/json')
         if hasattr(grains.data, 'granulated') and not grains.data.granulated:
             self.finish(cyclone.web.escape.json_encode({'done':False}))
         self.finish(cyclone.web.escape.json_encode({'done':True}))
 
+    @auth
     @defer.inlineCallbacks
     @cyclone.web.asynchronous
     def post(self):
-        self._check_auth()
-        self.set_header('Content-Type', 'application/json')
-
         callback_url = self._load_request_as_json().get('callback') or None
         filename = self._load_request_as_json().get('filename')
         video_uid = self._load_request_as_json().get('video_uid') or None
@@ -73,6 +87,7 @@ class HttpHandler(cyclone.web.RequestHandler):
         grains_uid = yield self._pre_store_in_sam(video_grains)
         response = yield self._enqueue_uid_to_granulate(grains_uid, video_uid, filename, callback_url)
 
+        self.set_header('Content-Type', 'application/json')
         self.finish(cyclone.web.escape.json_encode({'grains_key':grains_uid, 'video_key':video_uid}))
 
     def _convert_video(self, video):

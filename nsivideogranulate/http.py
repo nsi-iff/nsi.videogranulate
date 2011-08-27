@@ -64,13 +64,14 @@ class HttpHandler(cyclone.web.RequestHandler):
     def get(self):
         uid = self._load_request_as_json().get('key')
         response = yield self.sam.get(key=uid)
-        if response.code == 404:
+        if response.code == "404":
             raise cyclone.web.HTTPError(404, "Key not found.")
         grains = response.resource()
         self.set_header('Content-Type', 'application/json')
-        if hasattr(grains.data, 'granulated') and not grains.data.granulated:
+        if hasattr(grains.data, 'done'):
             self.finish(cyclone.web.escape.json_encode({'done':False}))
-        self.finish(cyclone.web.escape.json_encode({'done':True}))
+        else:
+            self.finish(cyclone.web.escape.json_encode({'done':True}))
 
     @auth
     @defer.inlineCallbacks

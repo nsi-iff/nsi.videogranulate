@@ -84,6 +84,7 @@ class HttpHandler(cyclone.web.RequestHandler):
         video = request.get('video') or self._get_from_sam(video_uid).data
 
         video_uid = yield self._pre_store_in_sam(video)
+        #video_uid = yield 'oi'
 
         video_grains = {'grains':[], 'done':False}
         grains_uid = yield self._pre_store_in_sam(video_grains)

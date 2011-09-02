@@ -77,18 +77,21 @@ class HttpHandler(cyclone.web.RequestHandler):
     @defer.inlineCallbacks
     @cyclone.web.asynchronous
     def post(self):
-        callback_url = self._load_request_as_json().get('callback') or None
-        filename = self._load_request_as_json().get('filename')
-        video_uid = self._load_request_as_json().get('video_uid') or None
-        video = self._load_request_as_json().get('video') or self._get_from_sam(video_uid).data
+        request = self._load_request_as_json()
+        callback_url = request.get('callback') or None
+        filename = request.get('filename')
+        video_uid = request.get('video_uid') or None
+        video = request.get('video') or self._get_from_sam(video_uid).data
 
         video_uid = yield self._pre_store_in_sam(video)
+        #video_uid = yield 'oi'
 
         video_grains = {'grains':[], 'done':False}
         grains_uid = yield self._pre_store_in_sam(video_grains)
         response = yield self._enqueue_uid_to_granulate(grains_uid, video_uid, filename, callback_url)
 
         self.set_header('Content-Type', 'application/json')
+        del video
         self.finish(cyclone.web.escape.json_encode({'grains_key':grains_uid, 'video_key':video_uid}))
 
     def _convert_video(self, video):

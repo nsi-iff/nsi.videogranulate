@@ -43,7 +43,8 @@ class VideoGranulation(Task):
         granulate = Granulate()
         grains = granulate.granulate(str(self.filename), decodestring(self._video.data))
         encoded_grains = [b64encode(image.getContent().getvalue()) for image in grains['image_list']]
-        self._store_in_sam(self.grains_uid, {'grains':encoded_grains})
+        encoded_videos = [b64encode(video.getContent().getvalue()) for video in grains['file_list']]
+        self._store_in_sam(self.grains_uid, {'images':encoded_grains, 'videos':encoded_videos})
 
     def _store_in_sam(self, uid, data):
         return self.sam.post(key=uid, value=data)

@@ -81,17 +81,21 @@ class HttpHandler(cyclone.web.RequestHandler):
         callback_url = request.get('callback') or None
         filename = request.get('filename')
         video_uid = request.get('video_uid') or None
-        video = request.get('video') or self._get_from_sam(video_uid).data
+        video_link = None
 
-        video_uid = yield self._pre_store_in_sam(video)
-        #video_uid = yield 'oi'
+        if not request.get('video_link'):
+            video = request.get('video') or self._get_from_sam(video_uid).data
+            video_uid = yield self._pre_store_in_sam(video)
+            del video
+        else:
+            video_uid = yield self._pre_store_in_sam({})
+            video_link = request.get('video_link')
 
         video_grains = {'grains':[], 'done':False}
         grains_uid = yield self._pre_store_in_sam(video_grains)
-        response = yield self._enqueue_uid_to_granulate(grains_uid, video_uid, filename, callback_url)
+        response = yield self._enqueue_uid_to_granulate(grains_uid, video_uid, filename, callback_url, video_link)
 
         self.set_header('Content-Type', 'application/json')
-        del video
         self.finish(cyclone.web.escape.json_encode({'grains_key':grains_uid, 'video_key':video_uid}))
 
     def _convert_video(self, video):
@@ -108,7 +112,7 @@ class HttpHandler(cyclone.web.RequestHandler):
     def _get_from_sam(self, uid):
         return self.sam.get(key=uid).resource()
 
-    def _enqueue_uid_to_granulate(self, grains_uid, video_uid, filename, callback_url):
-        send_task('nsivideogranulate.tasks.VideoGranulation', args=(grains_uid, video_uid, filename, callback_url, self.sam_settings),
+    def _enqueue_uid_to_granulate(self, grains_uid, video_uid, filename, callback_url, video_link):
+        send_task('nsivideogranulate.tasks.VideoGranulation', args=(grains_uid, video_uid, filename, callback_url, self.sam_settings, video_link),
                   queue='granulate', routing_key='granulate')
 

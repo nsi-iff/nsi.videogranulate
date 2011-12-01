@@ -16,11 +16,12 @@ class VideoDownloadException(Exception):
 
 class VideoGranulation(Task):
 
-    def run(self, grains_uid, video_uid, filename, callback_url, sam_settings, video_link):
+    def run(self, grains_uid, video_uid, filename, callback_url, sam_settings, video_link, verb='POST'):
         self.filename = filename
         self.grains_uid = grains_uid
         self.video_uid = video_uid
         self.callback_url = callback_url
+        self.callback_verb = verb.lower()
         self.video_link = video_link
         print video_link
 
@@ -38,15 +39,16 @@ class VideoGranulation(Task):
         if hasattr(grains.data, 'done') and not grains.data.done:
             print "Starting the granularization..."
             self._process_video()
+            del self._video
             print "Done the granularization."
-            if not self.callback_url == None:
-                print "Callback task sent."
-                send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.grains_uid),
-                           queue='granulate', routing_key='granulate')
-            else:
-                print "No callback."
+        if not self.callback_url == None:
+            print "Callback task sent."
+            send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.callback_verb, self.grains_uid),
+                       queue='granulate', routing_key='granulate')
         else:
-            raise VideoException("Video already granulated.")
+            print "No callback."
+        #else:
+            #raise VideoException("Video already granulated.")
 
     def _download_video(self, video_link):
         try:
@@ -61,8 +63,6 @@ class VideoGranulation(Task):
     def _process_video(self):
         granulate = Granulate()
         grains = granulate.granulate(str(self.filename), decodestring(self._video))
-        #encoded_grains = [b64encode(image.getContent().getvalue()) for image in grains['image_list']]
-        #encoded_videos = [b64encode(video.getContent().getvalue()) for video in grains['file_list']]
         encoded_grains = [dumps(image) for image in grains['image_list']]
         encoded_videos = [dumps(video) for video in grains['file_list']]
         self._store_in_sam(self.grains_uid, {'images':encoded_grains, 'videos':encoded_videos})
@@ -78,10 +78,12 @@ class Callback(Task):
 
     max_retries = 3
 
-    def run(self, url, grains_uid):
+    def run(self, url, verb, grains_uid):
         try:
             print "Sending callback to %s" % url
-            response = Restfulie.at(url).as_('application/json').post(key=grains_uid, status='Done')
+            restfulie = Restfulie.at(url).as_('application/json')
+            response = getattr(restfulie, verb)(key=grains_uid, status='Done')
+            print response.body
         except Exception, e:
             Callback.retry(exc=e, countdown=10)
         else:

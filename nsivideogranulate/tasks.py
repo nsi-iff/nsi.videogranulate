@@ -5,7 +5,7 @@ from nsi.granulate import Granulate
 from restfulie import Restfulie
 from celery.task import task, Task
 from celery.execute import send_task
-from pickle import dumps
+from json import dumps
 
 
 class VideoException(Exception):
@@ -63,8 +63,17 @@ class VideoGranulation(Task):
     def _process_video(self):
         granulate = Granulate()
         grains = granulate.granulate(str(self.filename), decodestring(self._video))
-        encoded_grains = [dumps(image) for image in grains['image_list']]
-        encoded_videos = [dumps(video) for video in grains['file_list']]
+        encoded_grains = [dumps({
+                                   'filename':image.id,
+                                   'content':b64encode(image.getContent().getvalue()),
+                                   'description':image.description
+                               })
+                               for image in grains['image_list']]
+        encoded_videos = [dumps({
+                                  'filename':video.id,
+                                  'content':b64encode(video.getContent().getvalue())
+                                })
+                                for video in grains['file_list']]
         self._store_in_sam(self.grains_uid, {'images':encoded_grains, 'videos':encoded_videos})
 
     def _store_in_sam(self, uid, data):

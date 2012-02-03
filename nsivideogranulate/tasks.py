@@ -63,16 +63,16 @@ class VideoGranulation(Task):
     def _process_video(self):
         granulate = Granulate()
         grains = granulate.granulate(str(self.filename), decodestring(self._video))
-        encoded_grains = [dumps({
-                                   'filename':image.id,
-                                   'content':b64encode(image.getContent().getvalue()),
-                                   'description':image.description
-                               })
+        encoded_grains = [{
+                               'filename':image.id,
+                               'content':b64encode(image.getContent().getvalue()),
+                               'description':image.description
+                          }
                                for image in grains['image_list']]
-        encoded_videos = [dumps({
-                                  'filename':video.id,
-                                  'content':b64encode(video.getContent().getvalue())
-                                })
+        encoded_videos = [{
+                              'filename':video.id,
+                              'content':b64encode(video.getContent().getvalue())
+                           }
                                 for video in grains['file_list']]
         self._store_in_sam(self.grains_uid, {'images':encoded_grains, 'videos':encoded_videos})
 
@@ -91,7 +91,7 @@ class Callback(Task):
         try:
             print "Sending callback to %s" % url
             restfulie = Restfulie.at(url).as_('application/json')
-            response = getattr(restfulie, verb)(key=grains_uid, status='Done')
+            response = getattr(restfulie, verb)(uid=grains_uid, done=True)
             print response.body
         except Exception, e:
             Callback.retry(exc=e, countdown=10)

@@ -16,9 +16,8 @@ class VideoDownloadException(Exception):
 
 class VideoGranulation(Task):
 
-    def run(self, grains_uid, video_uid, filename, callback_url, sam_settings, video_link, verb='POST'):
+    def run(self, video_uid, filename, callback_url, sam_settings, video_link, verb='POST'):
         self.filename = filename
-        self.grains_uid = grains_uid
         self.video_uid = video_uid
         self.callback_url = callback_url
         self.callback_verb = verb.lower()
@@ -30,21 +29,22 @@ class VideoGranulation(Task):
 
     def _granulate_video(self):
         print "Starting new job."
-        grains = self._get_from_sam(self.grains_uid).resource()
         if self.video_link:
             self._video = self._download_video(self.video_link)
         else:
-            self._video = self._get_from_sam(self.video_uid).resource().data
+            response = self._get_from_sam(self.video_uid).resource().data
+            self._video = response.video
         print "Video size: %d" % len(self._video)
-        if hasattr(grains.data, 'done') and not grains.data.done:
+        if hasattr(response, 'granulated') and not response.granulated:
             print "Starting the granularization..."
             self._process_video()
+            self._update_video_grains_keys()
             del self._video
             print "Done the granularization."
         if not self.callback_url == None:
             print "Callback task sent."
-            send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.callback_verb, self.grains_uid),
-                       queue='granulate', routing_key='granulate')
+            # send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.callback_verb, self.grains_uid),
+                       # queue='granulate', routing_key='granulate')
         else:
             print "No callback."
         #else:
@@ -63,21 +63,31 @@ class VideoGranulation(Task):
     def _process_video(self):
         granulate = Granulate()
         grains = granulate.granulate(str(self.filename), decodestring(self._video))
-        encoded_grains = [{
-                               'filename':image.id,
-                               'content':b64encode(image.getContent().getvalue()),
-                               'description':image.description
-                          }
-                               for image in grains['image_list']]
-        encoded_videos = [{
-                              'filename':video.id,
-                              'content':b64encode(video.getContent().getvalue())
-                           }
-                                for video in grains['file_list']]
-        self._store_in_sam(self.grains_uid, {'images':encoded_grains, 'videos':encoded_videos})
+        grains_keys = {'images':[], 'videos':[]}
+        if grains.has_key('image_list'):
+            for image in grains['image_list']:
+                encoded_image = {
+                                       'filename':image.id,
+                                       'content':b64encode(image.getContent().getvalue()),
+                                       'description':image.description
+                                  }
+                image_key = self.sam.put(value=encoded_image).resource().key
+                grains_keys['images'].append(image_key)
 
-    def _store_in_sam(self, uid, data):
-        return self.sam.post(key=uid, value=data)
+        if grains.has_key('file_list'):
+            for video in grains['file_list']:
+                encoded_video = {
+                                      'filename':video.id,
+                                      'content':b64encode(video.getContent().getvalue())
+                                 }
+                video_key = self.sam.put(value=encoded_video).resource().key
+                grains_keys['videos'].append(video_key)
+        self.grains_keys = grains_keys
+        del grains
+
+    def _update_video_grains_keys(self):
+        new_video = {'video':self._video, 'granulated':True, 'grains_keys':self.grains_keys}
+        self.sam.post(key=self.video_uid, value=new_video)
 
     def _get_from_sam(self, uid):
         return self.sam.get(key=uid)

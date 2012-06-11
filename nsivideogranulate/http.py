@@ -89,7 +89,7 @@ class HttpHandler(cyclone.web.RequestHandler):
             video_uid = yield self._pre_store_in_sam({'video':video, 'granulated':False})
             del video
         else:
-            video_uid = yield self._pre_store_in_sam({})
+            video_uid = yield self._pre_store_in_sam({'video':'', 'granulated':False})
             video_link = request.get('video_link')
 
         response = yield self._enqueue_uid_to_granulate(video_uid, filename, callback_url, callback_verb, video_link)

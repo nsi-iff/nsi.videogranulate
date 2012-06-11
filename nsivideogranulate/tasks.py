@@ -29,10 +29,10 @@ class VideoGranulation(Task):
 
     def _granulate_video(self):
         print "Starting new job."
+        response = self._get_from_sam(self.video_uid).resource().data
         if self.video_link:
             self._video = self._download_video(self.video_link)
         else:
-            response = self._get_from_sam(self.video_uid).resource().data
             self._video = response.video
         print "Video size: %d" % len(self._video)
         if hasattr(response, 'granulated') and not response.granulated:
@@ -43,8 +43,9 @@ class VideoGranulation(Task):
             print "Done the granularization."
         if not self.callback_url == None:
             print "Callback task sent."
-            # send_task('nsivideogranulate.tasks.Callback', args=(self.callback_url, self.callback_verb, self.grains_uid),
-                       # queue='granulate', routing_key='granulate')
+            send_task('nsivideogranulate.tasks.Callback',
+                       args=(self.callback_url, self.callback_verb, self.video_uid, self.grains_keys),
+                       queue='granulate', routing_key='granulate')
         else:
             print "No callback."
         #else:
@@ -97,11 +98,11 @@ class Callback(Task):
 
     max_retries = 3
 
-    def run(self, url, verb, grains_uid):
+    def run(self, url, verb, video_uid, grains_keys):
         try:
             print "Sending callback to %s" % url
             restfulie = Restfulie.at(url).as_('application/json')
-            response = getattr(restfulie, verb)(uid=grains_uid, done=True)
+            response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, done=True)
             print response.body
         except Exception, e:
             Callback.retry(exc=e, countdown=10)

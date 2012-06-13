@@ -6,7 +6,10 @@ from base64 import decodestring
 import functools
 import cyclone.web
 from twisted.internet import defer
+from twisted.python import log
 from zope.interface import implements
+from urlparse import urlsplit
+
 from nsivideogranulate.interfaces.http import IHttp
 from nsi.granulate import Granulate
 from restfulie import Restfulie
@@ -62,16 +65,42 @@ class HttpHandler(cyclone.web.RequestHandler):
     @defer.inlineCallbacks
     @cyclone.web.asynchronous
     def get(self):
-        uid = self._load_request_as_json().get('key')
+        request_as_json = self._load_request_as_json()
+        video_key = self._load_request_as_json().get('video_key')
+        uid = request_as_json.get('key') or video_key
+        if not video_key and not uid:
+            raise cyclone.web.HTTPError(400, 'Malformed request.')
         response = yield self.sam.get(key=uid)
         if response.code == "404":
             raise cyclone.web.HTTPError(404, "Key not found.")
+        elif response.code == "401":
+            raise cyclone.web.HTTPError(401, "Couldn't authenticate with SAM.")
+        elif response.code == "500":
+            raise cyclone.web.HTTPError(500, "Error while trying to connect to SAM.")
         response = response.resource()
         self.set_header('Content-Type', 'application/json')
-        if hasattr(response.data, 'granulated') and  response.data.granulated:
+        if video_key:
+            grains = self._get_grains_keys(video_key)
+            self.finish(cyclone.web.escape.json_encode(grains))
+        elif hasattr(response.data, 'granulated') and  response.data.granulated:
             self.finish(cyclone.web.escape.json_encode({'done':True}))
         else:
             self.finish(cyclone.web.escape.json_encode({'done':False}))
+
+    def _get_grains_keys(self, video_key):
+        video_uid = video_key
+        response = self.sam.get(key=video_uid)
+        if response.code == '404':
+            log.msg("GET failed!")
+            log.msg("Couldn't find any value for the key: %s" % key)
+            raise cyclone.web.HTTPError(404, 'Key not found in SAM.')
+        elif response.code == "401":
+            raise cyclone.web.HTTPError(401, "Couldn't authenticate with SAM.")
+        elif response.code == "500":
+            raise cyclone.web.HTTPError(500, "Error while trying to connect to SAM.")
+        sam_entry = loads(response.body)
+        grains = sam_entry['data']['grains_keys']
+        return grains
 
     @auth
     @defer.inlineCallbacks
@@ -79,21 +108,33 @@ class HttpHandler(cyclone.web.RequestHandler):
     def post(self):
         request = self._load_request_as_json()
         callback_url = request.get('callback') or None
-        filename = request.get('filename')
+        filename = request.get('filename') or urlsplit(request_as_json.get('video_link')).path.split('/')[-1] or None
+        if not filename:
+            log.msg('POST failed.')
+            log.msg("Couldn't calculate the filename or it wasn't provided.")
+            raise cyclone.web.HTTPError(400, 'Malformed request.')
         video_uid = request.get('video_uid') or None
         video_link = None
         callback_verb = request.get('verb') or 'POST'
 
-        if not request.get('video_link'):
-            video = request.get('video') or self._get_from_sam(video_uid).data
+        # se nao tiver link....
+        if request.get('video'):
+            video = request.get('video')
             video_uid = yield self._pre_store_in_sam({'video':video, 'granulated':False})
             del video
-        else:
+        elif request.get('video_uid'):
+            pass
+        # se tiver um link
+        elif request.get('video_link'):
             video_uid = yield self._pre_store_in_sam({'video':'', 'granulated':False})
             video_link = request.get('video_link')
+        else:
+            raise cyclone.web.HTTPError(400, 'Malformed request.')
 
+        print video_uid
         response = yield self._enqueue_uid_to_granulate(video_uid, filename, callback_url, callback_verb, video_link)
 
+        print 'uhu'
         self.set_header('Content-Type', 'application/json')
         self.finish(cyclone.web.escape.json_encode({'video_key':video_uid}))
 

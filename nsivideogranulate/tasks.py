@@ -5,7 +5,7 @@ from nsi.granulate import Granulate
 from restfulie import Restfulie
 from celery.task import task, Task
 from celery.execute import send_task
-from json import dumps
+from json import dumps, loads
 
 
 class VideoException(Exception):
@@ -35,7 +35,8 @@ class VideoGranulation(Task):
         else:
             self._video = response.video
         print "Video size: %d" % len(self._video)
-        if hasattr(response, 'granulated') and not response.granulated:
+        granulated = getattr(response, 'granulated', False)
+        if not granulated:
             print "Starting the granularization..."
             self._process_video()
             self._update_video_grains_keys()

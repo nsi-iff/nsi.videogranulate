@@ -69,22 +69,33 @@ class HttpHandler(cyclone.web.RequestHandler):
         video_key = self._load_request_as_json().get('video_key')
         uid = request_as_json.get('key') or video_key
         if not video_key and not uid:
+            log.msg('GET failed!')
+            log.msg('The video key was not provided.')
             raise cyclone.web.HTTPError(400, 'Malformed request.')
         response = yield self.sam.get(key=uid)
         if response.code == "404":
+            log.msg('GET failed!')
+            log.msg('The video with key %s was not found at SAM.' % uid)
             raise cyclone.web.HTTPError(404, "Key not found.")
         elif response.code == "401":
+            log.msg('GET failed!')
+            log.msg('Authentication with SAM failed.')
             raise cyclone.web.HTTPError(401, "Couldn't authenticate with SAM.")
         elif response.code == "500":
+            log.msg('GET failed!')
+            log.msg('Error while trying to connect to SAM.')
             raise cyclone.web.HTTPError(500, "Error while trying to connect to SAM.")
         response = response.resource()
         self.set_header('Content-Type', 'application/json')
         if video_key:
             grains = self._get_grains_keys(video_key)
+            log.msg('Found the grains for the video with key %s.' % video_key)
             self.finish(cyclone.web.escape.json_encode(grains))
         elif hasattr(response.data, 'granulated') and  response.data.granulated:
+            log.msg('Video with key %s is granulated.' % uid)
             self.finish(cyclone.web.escape.json_encode({'done':True}))
         else:
+            log.msg('Video with key %s is not granulated.' % uid)
             self.finish(cyclone.web.escape.json_encode({'done':False}))
 
     def _get_grains_keys(self, video_key):
@@ -95,8 +106,12 @@ class HttpHandler(cyclone.web.RequestHandler):
             log.msg("Couldn't find any value for the key: %s" % key)
             raise cyclone.web.HTTPError(404, 'Key not found in SAM.')
         elif response.code == "401":
+            log.msg('GET failed!')
+            log.msg('Authentication with SAM failed.')
             raise cyclone.web.HTTPError(401, "Couldn't authenticate with SAM.")
         elif response.code == "500":
+            log.msg('GET failed!')
+            log.msg('Error while trying to connect to SAM.')
             raise cyclone.web.HTTPError(500, "Error while trying to connect to SAM.")
         sam_entry = loads(response.body)
         grains = sam_entry['data']['grains_keys']
@@ -121,20 +136,22 @@ class HttpHandler(cyclone.web.RequestHandler):
         if request.get('video'):
             video = request.get('video')
             video_uid = yield self._pre_store_in_sam({'video':video, 'granulated':False})
+            log.msg('Got an entire video to be granulated and stored it in SAM key %s.' % video_uid)
             del video
         elif request.get('video_uid'):
-            pass
+            log.msg('Got a video to granualte from in key %s.' % request.get('video_uid'))
         # se tiver um link
         elif request.get('video_link'):
             video_uid = yield self._pre_store_in_sam({'video':'', 'granulated':False})
             video_link = request.get('video_link')
+            log.msg('Got a video to download from %s and store in key %s.' % (video_link, video_uid))
         else:
+            log.msg('POST failed.')
+            log.msg('Neither a video, a link, or an uid were provided.')
             raise cyclone.web.HTTPError(400, 'Malformed request.')
 
-        print video_uid
         response = yield self._enqueue_uid_to_granulate(video_uid, filename, callback_url, callback_verb, video_link)
 
-        print 'uhu'
         self.set_header('Content-Type', 'application/json')
         self.finish(cyclone.web.escape.json_encode({'video_key':video_uid}))
 
@@ -145,17 +162,33 @@ class HttpHandler(cyclone.web.RequestHandler):
         return uid
 
     def _pre_store_in_sam(self, data):
-        response = self.sam.put(value=data).resource()
-        uid = response.key
+        response = self.sam.put(value=data)
+        if response.code == '404':
+            log.msg("GET failed!")
+            log.msg("Couldn't find any value for the key: %s" % key)
+            raise cyclone.web.HTTPError(404, 'Key not found in SAM.')
+        elif response.code == "401":
+            log.msg('GET failed!')
+            log.msg('Authentication with SAM failed.')
+            raise cyclone.web.HTTPError(401, "Couldn't authenticate with SAM.")
+        elif response.code == "500":
+            log.msg('GET failed!')
+            log.msg('Error while trying to connect to SAM.')
+        uid = response.resource().key
         return uid
 
     def _get_from_sam(self, uid):
         return self.sam.get(key=uid).resource()
 
     def _enqueue_uid_to_granulate(self, video_uid, filename, callback_url, callback_verb, video_link):
-        send_task(
-                    'nsivideogranulate.tasks.VideoGranulation',
-                    args=(video_uid, filename, callback_url, self.sam_settings, video_link, callback_verb),
-                    queue='granulate', routing_key='granulate'
-                 )
+        try:
+            send_task(
+                        'nsivideogranulate.tasks.VideoGranulation',
+                        args=(video_uid, filename, callback_url, self.sam_settings, video_link, callback_verb),
+                        queue='granulate', routing_key='granulate'
+                     )
+        except:
+            log.msg('POST failed.')
+            log.msg('Could not enqueue the video to granulate.')
+            raise cyclobe.web.HTTPError(500, 'Can not enqueue the video to granulate.')
 

@@ -25,7 +25,13 @@ class VideoGranulation(Task):
         print video_link
 
         self.sam = Restfulie.at(sam_settings['url']).as_('application/json').auth(*sam_settings['auth'])
-        self._granulate_video()
+        try:
+            self._granulate_video()
+        except:
+            send_task('nsivideogranulate.tasks.FailCallback',
+                      args=(self.callback_url, self.callback_verb, self.video_uid, self.grains_keys),
+                      queue='granulate', routing_key='granulate')
+
 
     def _granulate_video(self):
         print "Starting new job."
@@ -104,10 +110,24 @@ class Callback(Task):
             print "Sending callback to %s" % url
             restfulie = Restfulie.at(url).as_('application/json')
             response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, done=True)
-            print response.body
         except Exception, e:
             Callback.retry(exc=e, countdown=10)
         else:
             print "Callback executed."
             print "Response code: %s" % response.code
 
+
+class FailCallback(Task):
+
+    max_retries = 3
+
+    def run(self, url, verb, video_uid, grains_keys):
+        try:
+            print "Sending callback to %s" % url
+            restfulie = Restfulie.at(url).as_('application/json')
+            response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, done=False)
+        except Exception, e:
+            FailCallback.retry(exc=e, countdown=10)
+        else:
+            print "Fail Callback executed."
+            print "Response code: %s" % response.code

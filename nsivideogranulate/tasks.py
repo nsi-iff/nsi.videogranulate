@@ -29,7 +29,7 @@ class VideoGranulation(Task):
             self._granulate_video()
         except:
             send_task('nsivideogranulate.tasks.FailCallback',
-                      args=(self.callback_url, self.callback_verb, self.video_uid, self.grains_keys),
+                      args=(self.callback_url, self.callback_verb, self.video_uid),
                       queue='granulate', routing_key='granulate')
 
 
@@ -121,11 +121,11 @@ class FailCallback(Task):
 
     max_retries = 3
 
-    def run(self, url, verb, video_uid, grains_keys):
+    def run(self, url, verb, video_uid):
         try:
             print "Sending callback to %s" % url
             restfulie = Restfulie.at(url).as_('application/json')
-            response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, done=False)
+            response = getattr(restfulie, verb)(video_key=video_uid, done=False)
         except Exception, e:
             FailCallback.retry(exc=e, countdown=10)
         else:

@@ -155,12 +155,6 @@ class HttpHandler(cyclone.web.RequestHandler):
         self.set_header('Content-Type', 'application/json')
         self.finish(cyclone.web.escape.json_encode({'video_key':video_uid}))
 
-    def _convert_video(self, video):
-        converter = Restfulie.at(self.videoconvert_settings['url']).auth(*self.videoconvert_settings['auth']).as_('application/json')
-        response = converter.post(video=video).resource()
-        uid = response.key
-        return uid
-
     def _pre_store_in_sam(self, data):
         response = self.sam.put(value=data)
         if response.code == '404':
@@ -176,9 +170,6 @@ class HttpHandler(cyclone.web.RequestHandler):
             log.msg('Error while trying to connect to SAM.')
         uid = response.resource().key
         return uid
-
-    def _get_from_sam(self, uid):
-        return self.sam.get(key=uid).resource()
 
     def _enqueue_uid_to_granulate(self, video_uid, filename, callback_url, callback_verb, video_link):
         try:

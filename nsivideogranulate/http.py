@@ -59,6 +59,7 @@ class HttpHandler(cyclone.web.RequestHandler):
         cyclone.web.RequestHandler.__init__(self, *args, **kwargs)
         self._load_sam_config()
         self._load_videoconvert_config()
+        self._task_queue = self.settings.task_queue
         self.sam = Restfulie.at(self.sam_settings['url']).auth(*self.sam_settings['auth']).as_('application/json')
 
     @auth
@@ -176,7 +177,7 @@ class HttpHandler(cyclone.web.RequestHandler):
             send_task(
                         'nsivideogranulate.tasks.VideoGranulation',
                         args=(video_uid, filename, callback_url, self.sam_settings, video_link, callback_verb),
-                        queue='granulate', routing_key='granulate'
+                        queue=self._task_queue, routing_key=self._task_queue
                      )
         except:
             log.msg('POST failed.')

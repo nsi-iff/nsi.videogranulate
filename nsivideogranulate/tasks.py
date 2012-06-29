@@ -25,23 +25,24 @@ class VideoGranulation(Task):
         print video_link
 
         self.sam = Restfulie.at(sam_settings['url']).as_('application/json').auth(*sam_settings['auth'])
-        try:
-            self._granulate_video()
-        except:
-            send_task('nsivideogranulate.tasks.FailCallback',
-                      args=(self.callback_url, self.callback_verb, self.video_uid),
-                      queue='granulate', routing_key='granulate')
+        # try:
+        self._granulate_video()
+        # except:
+        #     send_task('nsivideogranulate.tasks.FailCallback',
+        #               args=(self.callback_url, self.callback_verb, self.video_uid),
+        #               queue='granulate', routing_key='granulate')
 
 
     def _granulate_video(self):
         print "Starting new job."
-        response = self._get_from_sam(self.video_uid).resource().data
+        response = loads(self._get_from_sam(self.video_uid).body)
         if self.video_link:
             self._video = self._download_video(self.video_link)
         else:
-            self._video = response.video
+            self._video = response['data']['video']
+            self._old_video = response['data']
         print "Video size: %d" % len(self._video)
-        granulated = getattr(response, 'granulated', False)
+        granulated = response.get('granulated')
         if not granulated:
             print "Starting the granularization..."
             self._process_video()
@@ -94,7 +95,8 @@ class VideoGranulation(Task):
         del grains
 
     def _update_video_grains_keys(self):
-        new_video = {'video':self._video, 'granulated':True, 'grains_keys':self.grains_keys}
+        new_video = {'granulated':True, 'grains_keys':self.grains_keys}
+        new_video.update(self._old_video)
         self.sam.post(key=self.video_uid, value=new_video)
 
     def _get_from_sam(self, uid):

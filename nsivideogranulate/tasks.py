@@ -77,7 +77,7 @@ class VideoGranulation(Task):
             for image in grains['image_list']:
                 encoded_image = {
                                        'filename':image.id,
-                                       'content':b64encode(image.getContent().getvalue()),
+                                       'file':b64encode(image.getContent().getvalue()),
                                        'description':image.description
                                   }
                 image_key = self.sam.put(value=encoded_image).resource().key
@@ -87,7 +87,7 @@ class VideoGranulation(Task):
             for video in grains['file_list']:
                 encoded_video = {
                                       'filename':video.id,
-                                      'content':b64encode(video.getContent().getvalue())
+                                      'file':b64encode(video.getContent().getvalue())
                                  }
                 video_key = self.sam.put(value=encoded_video).resource().key
                 grains_keys['videos'].append(video_key)

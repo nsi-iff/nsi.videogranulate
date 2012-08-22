@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
+from time import sleep
 from base64 import decodestring, b64encode
 from nsi.granulate import Granulate
 from restfulie import Restfulie
@@ -17,6 +18,7 @@ class VideoDownloadException(Exception):
 class VideoGranulation(Task):
 
     def run(self, video_uid, filename, callback_url, sam_settings, video_link, verb='POST'):
+        sleep(3)
         self.filename = filename
         self.video_uid = video_uid
         self.callback_url = callback_url
@@ -35,7 +37,8 @@ class VideoGranulation(Task):
 
     def _granulate_video(self):
         print "Starting new job."
-        response = loads(self._get_from_sam(self.video_uid).body)
+        body = self._get_from_sam(self.video_uid).body
+        response = loads(body)
         if self.video_link:
             self._video = self._download_video(self.video_link)
         else:

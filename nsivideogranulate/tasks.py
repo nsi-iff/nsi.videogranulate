@@ -95,9 +95,10 @@ class VideoGranulation(Task):
         del grains
 
     def _update_video_grains_keys(self):
-        new_video = {'granulated':True, 'grains_keys':self.grains_keys}
-        new_video.update(self._old_video)
-        self.sam.post(key=self.video_uid, value=new_video)
+        self._old_video['granulated'] = True
+        self._old_video['grains_keys'] = self.grains_keys
+
+        self.sam.post(key=self.video_uid, value=self._old_video)
 
     def _get_from_sam(self, uid):
         return self.sam.get(key=uid)
@@ -113,6 +114,7 @@ class Callback(Task):
             restfulie = Restfulie.at(url).as_('application/json')
             response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, done=True)
         except Exception, e:
+            print "Erro no callback."
             Callback.retry(exc=e, countdown=10)
         else:
             print "Callback executed."

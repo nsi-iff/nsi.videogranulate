@@ -176,7 +176,7 @@ class HttpHandler(cyclone.web.RequestHandler):
         try:
             send_task(
                         'nsivideogranulate.tasks.VideoGranulation',
-                        args=(video_uid, filename, callback_url, self.sam_settings, video_link, callback_verb),
+                        args=(self._task_queue, video_uid, filename, callback_url, self.sam_settings, video_link, callback_verb),
                         queue=self._task_queue, routing_key=self._task_queue
                      )
         except:

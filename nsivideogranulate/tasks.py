@@ -17,13 +17,14 @@ class VideoDownloadException(Exception):
 
 class VideoGranulation(Task):
 
-    def run(self, video_uid, filename, callback_url, sam_settings, video_link, verb='POST'):
+    def run(self, task_queue, video_uid, filename, callback_url, sam_settings, video_link, verb='POST'):
         sleep(3)
         self.filename = filename
         self.video_uid = video_uid
         self.callback_url = callback_url
         self.callback_verb = verb.lower()
         self.video_link = video_link
+        self.task_queue = task_queue
         print video_link
 
         self.sam = Restfulie.at(sam_settings['url']).as_('application/json').auth(*sam_settings['auth'])
@@ -56,7 +57,7 @@ class VideoGranulation(Task):
             print "Callback task sent."
             send_task('nsivideogranulate.tasks.Callback',
                        args=(self.callback_url, self.callback_verb, self.video_uid, self.grains_keys),
-                       queue='granulate', routing_key='granulate')
+                       queue=self.task_queue, routing_key=self.task_queue)
         else:
             print "No callback."
         #else:

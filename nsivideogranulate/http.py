@@ -136,14 +136,14 @@ class HttpHandler(cyclone.web.RequestHandler):
         # se nao tiver link....
         if request.get('video'):
             video = request.get('video')
-            video_uid = yield self._pre_store_in_sam({'video':video, 'granulated':False})
+            video_uid = yield self._pre_store_in_sam({'file':video, 'granulated':False})
             log.msg('Got an entire video to be granulated and stored it in SAM key %s.' % video_uid)
             del video
         elif request.get('video_uid'):
             log.msg('Got a video to granualte from in key %s.' % request.get('video_uid'))
         # se tiver um link
         elif request.get('video_link'):
-            video_uid = yield self._pre_store_in_sam({'video':'', 'granulated':False})
+            video_uid = yield self._pre_store_in_sam({'file':'', 'granulated':False})
             video_link = request.get('video_link')
             log.msg('Got a video to download from %s and store in key %s.' % (video_link, video_uid))
         else:

@@ -43,7 +43,7 @@ class VideoGranulation(Task):
         if self.video_link:
             self._video = self._download_video(self.video_link)
         else:
-            self._video = response['data']['video']
+            self._video = response['data']['file']
             self._old_video = response['data']
         print "Video size: %d" % len(self._video)
         granulated = response.get('granulated')

@@ -76,7 +76,7 @@ class VideoGranulation(Task):
     def _process_video(self):
         granulate = Granulate()
         grains = granulate.granulate(str(self.filename), decodestring(self._video))
-        grains_keys = {'images':[], 'videos':[]}
+        grains_keys = {'images':[], 'videos':[], 'audio':None, 'thumbnail':None, 'converted_video':None}
         if grains.has_key('image_list'):
             for image in grains['image_list']:
                 encoded_image = {
@@ -95,6 +95,22 @@ class VideoGranulation(Task):
                                  }
                 video_key = self.sam.put(value=encoded_video).resource().key
                 grains_keys['videos'].append(video_key)
+
+        if grains.has_key('audio'):
+            audio = grains['audio']
+            audio_key = self.sam.put(value=audio).resource().key
+            grains_keys['audio'] = audio_key
+
+        if grains.has_key('thumbnail'):
+            thumbnail = grains['thumbnail']
+            thumbnail_key = self.sam.put(value=thumbnail).resource().key
+            grains_keys['thumbnail'] = thumbnail_key
+
+        if grains.has_key('converted_video'):
+            converted_video = grains['converted_video']
+            converted_video_key = self.sam.put(value=converted_video).resource().key
+            grains_keys['converted_video'] = converted_video_key
+
         self.grains_keys = grains_keys
         del grains
 

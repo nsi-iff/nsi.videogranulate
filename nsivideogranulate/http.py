@@ -67,28 +67,17 @@ class HttpHandler(cyclone.web.RequestHandler):
     @cyclone.web.asynchronous
     def get(self):
         request_as_json = self._load_request_as_json()
-        video_key = self._load_request_as_json().get('video_key')
-        uid = request_as_json.get('key') or video_key
-        if not video_key and not uid:
+        video_key = request_as_json.get('video_key')
+        is_grains_request = request_as_json.get('grains') or False
+        if not video_key:
             log.msg('GET failed!')
             log.msg('The video key was not provided.')
             raise cyclone.web.HTTPError(400, 'Malformed request.')
-        response = yield self.sam.get(key=uid)
-        if response.code == "404":
-            log.msg('GET failed!')
-            log.msg('The video with key %s was not found at SAM.' % uid)
-            raise cyclone.web.HTTPError(404, "Key not found.")
-        elif response.code == "401":
-            log.msg('GET failed!')
-            log.msg('Authentication with SAM failed.')
-            raise cyclone.web.HTTPError(401, "Couldn't authenticate with SAM.")
-        elif response.code == "500":
-            log.msg('GET failed!')
-            log.msg('Error while trying to connect to SAM.')
-            raise cyclone.web.HTTPError(500, "Error while trying to connect to SAM.")
+        response = yield self.sam.get(key=video_key)
+        self._check_response(response)
         response = response.resource()
         self.set_header('Content-Type', 'application/json')
-        if video_key:
+        if is_grains_request:
             grains = self._get_grains_keys(video_key)
             log.msg('Found the grains for the video with key %s.' % video_key)
             self.finish(cyclone.web.escape.json_encode(grains))
@@ -102,6 +91,12 @@ class HttpHandler(cyclone.web.RequestHandler):
     def _get_grains_keys(self, video_key):
         video_uid = video_key
         response = self.sam.get(key=video_uid)
+        self._check_response(response)
+        sam_entry = loads(response.body)
+        grains = sam_entry['data']['grains_keys']
+        return grains
+
+    def _check_response(self, response):
         if response.code == '404':
             log.msg("GET failed!")
             log.msg("Couldn't find any value for the key: %s" % key)
@@ -114,9 +109,6 @@ class HttpHandler(cyclone.web.RequestHandler):
             log.msg('GET failed!')
             log.msg('Error while trying to connect to SAM.')
             raise cyclone.web.HTTPError(500, "Error while trying to connect to SAM.")
-        sam_entry = loads(response.body)
-        grains = sam_entry['data']['grains_keys']
-        return grains
 
     @auth
     @defer.inlineCallbacks

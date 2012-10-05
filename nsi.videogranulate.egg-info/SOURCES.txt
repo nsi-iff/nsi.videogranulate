@@ -1,9 +1,0 @@
-setup.cfg
-setup.py
-nsi.videogranulate.egg-info/PKG-INFO
-nsi.videogranulate.egg-info/SOURCES.txt
-nsi.videogranulate.egg-info/dependency_links.txt
-nsi.videogranulate.egg-info/entry_points.txt
-nsi.videogranulate.egg-info/top_level.txt
-nsi.videogranulate.egg-info/zip-safe
-nsivideogranulate/__init__.py

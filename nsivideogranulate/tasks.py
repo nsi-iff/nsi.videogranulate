@@ -96,23 +96,27 @@ class VideoGranulation(Task):
                 video_key = self.sam.put(value=encoded_video).resource().key
                 grains_keys['videos'].append(video_key)
 
-        if grains.has_key('audio'):
-            audio = grains['audio']
-            audio_key = self.sam.put(value=audio).resource().key
+        if grains.has_key('audio') and grains['audio'] is not None:
+            audio = grains['audio'].getContent().getvalue()
+            print 'Got the video audio.'
+            audio_key = self.sam.put(value=b64encode(audio)).resource().key
             grains_keys['audio'] = audio_key
 
-        if grains.has_key('thumbnail'):
-            thumbnail = grains['thumbnail']
-            thumbnail_key = self.sam.put(value=thumbnail).resource().key
+        if grains.has_key('thumbnail') and grains['thumbnail'] is not None:
+            thumbnail = grains['thumbnail'].getContent().getvalue()
+            print 'Got the video thumbnail.'
+            thumbnail_key = self.sam.put(value=b64encode(thumbnail)).resource().key
             grains_keys['thumbnail'] = thumbnail_key
 
-        if grains.has_key('converted_video'):
-            converted_video = grains['converted_video']
-            converted_video_key = self.sam.put(value=converted_video).resource().key
+        if grains.has_key('converted_video') and grains['converted_video'] is not None:
+            converted_video = grains['converted_video'].getContent().getvalue()
+            print 'Got the converted video.'
+            converted_video_key = self.sam.put(value=b64encode(converted_video)).resource().key
             grains_keys['converted_video'] = converted_video_key
 
         self.grains_keys = grains_keys
         del grains
+        del granulate
 
     def _update_video_grains_keys(self):
         self._old_video['granulated'] = True

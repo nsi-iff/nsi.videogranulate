@@ -82,10 +82,10 @@ class HttpHandler(cyclone.web.RequestHandler):
             log.msg('Found the grains for the video with key %s.' % video_key)
             self.finish(cyclone.web.escape.json_encode(grains))
         elif hasattr(response.data, 'granulated') and  response.data.granulated:
-            log.msg('Video with key %s is granulated.' % uid)
+            log.msg('Video with key %s is granulated.' % video_key)
             self.finish(cyclone.web.escape.json_encode({'done':True}))
         else:
-            log.msg('Video with key %s is not granulated.' % uid)
+            log.msg('Video with key %s is not granulated.' % video_key)
             self.finish(cyclone.web.escape.json_encode({'done':False}))
 
     def _get_grains_keys(self, video_key):

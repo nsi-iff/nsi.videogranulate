@@ -141,7 +141,9 @@ class Callback(Task):
         try:
             print "Sending callback to %s" % url
             restfulie = Restfulie.at(url).as_('application/json')
-            response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, done=True)
+            thumbnails = grains_keys['thumbnails']
+            del grains_keys['thumbnails']
+            response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, thumbnails_keys=thumbnails, done=True)
         except Exception, e:
             print "Erro no callback."
             Callback.retry(exc=e, countdown=10)

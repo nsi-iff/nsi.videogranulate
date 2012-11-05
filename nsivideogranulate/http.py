@@ -143,6 +143,8 @@ class HttpHandler(cyclone.web.RequestHandler):
             log.msg('Neither a video, a link, or an uid were provided.')
             raise cyclone.web.HTTPError(400, 'Malformed request.')
 
+        if callback_url:
+            log.msg('Callback requested to url %s using verb %s' % (callback_url, callback_verb))
         response = yield self._enqueue_uid_to_granulate(video_uid, filename, callback_url, callback_verb, video_link)
 
         self.set_header('Content-Type', 'application/json')

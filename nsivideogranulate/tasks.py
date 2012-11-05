@@ -97,25 +97,25 @@ class VideoGranulation(Task):
                 grains_keys['videos'].append(video_key)
 
         if grains.has_key('audio') and grains['audio'] is not None:
-            audio = grains['audio'].getContent().getvalue()
+            audio = grains['audio']
             print 'Got the video audio.'
-            row = {'file': b64encode(audio)}
+            row = {'file': b64encode(audio.getContent().getvalue()), 'filename': audio.id}
             audio_key = self.sam.put(value=row).resource().key
             grains_keys['audio'] = audio_key
 
         if grains.has_key('thumbnails') and grains['thumbnails'] is not None:
-            thumbnails = [thumbnail.getContent().getvalue() for thumbnail in grains['thumbnails']]
+            thumbnails = [thumbnail for thumbnail in grains['thumbnails']]
             print 'Got the video thumbnails.'
             grains_keys['thumbnails'] = []
             for thumbnail in thumbnails:
-                row = {'file': b64encode(thumbnail)}
+                row = {'file': b64encode(thumbnail.getContent().getvalue()), 'filename': thumbnail.id}
                 thumbnail_key = self.sam.put(value=row).resource().key
                 grains_keys['thumbnails'].append(thumbnail_key)
 
         if grains.has_key('converted_video') and grains['converted_video'] is not None:
-            converted_video = grains['converted_video'].getContent().getvalue()
+            converted_video = grains['converted_video']
             print 'Got the converted video.'
-            row = {'file': b64encode(converted_video)}
+            row = {'file': b64encode(converted_video.getContent().getvalue()), 'filename': converted_video.id}
             converted_video_key = self.sam.put(value=row).resource().key
             grains_keys['converted_video'] = converted_video_key
 
@@ -141,8 +141,10 @@ class Callback(Task):
         try:
             print "Sending callback to %s" % url
             restfulie = Restfulie.at(url).as_('application/json')
-            thumbnails = grains_keys['thumbnails']
-            del grains_keys['thumbnails']
+            thumbnails = []
+            if grains_keys.get('thumbnails'):
+                thumbnails = grains_keys['thumbnails']
+                del grains_keys['thumbnails']
             response = getattr(restfulie, verb)(video_key=video_uid, grains_keys=grains_keys, thumbnails_keys=thumbnails, done=True)
         except Exception, e:
             print "Erro no callback."

@@ -149,7 +149,7 @@ class HttpHandler(cyclone.web.RequestHandler):
         self.finish(cyclone.web.escape.json_encode({'video_key':video_uid}))
 
     def _pre_store_in_sam(self, data):
-        response = self.sam.put(value=data)
+        response = self.sam.post(value=data)
         if response.code == '404':
             log.msg("GET failed!")
             log.msg("Couldn't find any value for the key: %s" % key)

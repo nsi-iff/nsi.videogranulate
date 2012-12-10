@@ -108,14 +108,14 @@ class VideoGranulation(Task):
             print 'Got the video thumbnails.'
             grains_keys['thumbnails'] = []
             for thumbnail in thumbnails:
-                row = {'file': b64encode(thumbnail)}
+                row = {'file': b64encode(thumbnail.getContent().getvalue())}
                 thumbnail_key = self.sam.post(value=row).resource().key
                 grains_keys['thumbnails'].append(thumbnail_key)
 
         if grains.has_key('converted_video') and grains['converted_video'] is not None:
             converted_video = grains['converted_video']
             print 'Got the converted video.'
-            row = {'file': b64encode(converted_video)}
+            row = {'file': b64encode(converted_video.getContent().getvalue())}
             converted_video_key = self.sam.post(value=row).resource().key
             grains_keys['converted_video'] = converted_video_key
 

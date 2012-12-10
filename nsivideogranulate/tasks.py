@@ -99,7 +99,7 @@ class VideoGranulation(Task):
         if grains.has_key('audio') and grains['audio'] is not None:
             audio = grains['audio']
             print 'Got the video audio.'
-            row = {'file': b64encode(audio.getContent().getvalue())}
+            row = {'file': b64encode(audio.getContent().getvalue()), 'filename': 'audio.oga'}
             audio_key = self.sam.post(value=row).resource().key
             grains_keys['audio'] = audio_key
 
@@ -115,7 +115,7 @@ class VideoGranulation(Task):
         if grains.has_key('converted_video') and grains['converted_video'] is not None:
             converted_video = grains['converted_video']
             print 'Got the converted video.'
-            row = {'file': b64encode(converted_video.getContent().getvalue())}
+            row = {'file': b64encode(converted_video.getContent().getvalue()), 'filename': 'converted.ogv'}
             converted_video_key = self.sam.post(value=row).resource().key
             grains_keys['converted_video'] = converted_video_key
 
